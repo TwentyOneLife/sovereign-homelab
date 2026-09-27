@@ -35,7 +35,10 @@ warn() { printf '%s[!]%s %s\n'  "$_c_yellow" "$_c_reset" "$*" >&2; }
 die()  { printf '%s[x]%s %s\n'  "$_c_red"    "$_c_reset" "$*" >&2; exit 1; }
 
 # run: echo a command, then execute it. Keeps the build auditable.
-run() { printf '    %s$ %s%s\n' "$_c_blue" "$*" "$_c_reset"; "$@"; }
+# The trace goes to stderr so `$(run ...)`/`$(as_root ...)` capture only the
+# command's real output, never the "$ ..."/"# ..." banner (a stdout banner
+# silently poisons string compares like fs = "LVM2_member").
+run() { printf '    %s$ %s%s\n' "$_c_blue" "$*" "$_c_reset" >&2; "$@"; }
 
 # fetch <url> <dest>: robust download. Resumes a partial (-C -) and retries
 # transient failures including a mid-stream reset (SourceForge and other mirrors
@@ -53,7 +56,7 @@ as_root() {
     "$@"
   else
     command -v sudo >/dev/null 2>&1 || die "this step needs root and sudo is not installed"
-    printf '    %s# %s%s\n' "$_c_yellow" "$*" "$_c_reset"
+    printf '    %s# %s%s\n' "$_c_yellow" "$*" "$_c_reset" >&2
     sudo "$@"
   fi
 }
@@ -61,6 +64,16 @@ as_root() {
 # --- prerequisite checks ----------------------------------------------------
 need_cmd() { command -v "$1" >/dev/null 2>&1 || die "missing required tool: $1 (see builder/README.md)"; }
 have_cmd() { command -v "$1" >/dev/null 2>&1; }
+
+# osinfo_pick <preferred> [fallback...]: the first os short-id this host's
+# virt-install actually knows. A distro's own release often postdates its
+# shipped osinfo-db (Debian bookworm has no 'debian12'), and an explicit unknown
+# --osinfo name is a hard error, so pick a known one instead of hardcoding.
+osinfo_pick() {
+  local known; known="$(virt-install --osinfo list 2>/dev/null)"
+  local n; for n in "$@"; do grep -qx "$n" <<<"$known" && { echo "$n"; return; }; done
+  echo generic
+}
 
 # --- virsh / libvirt wrappers ----------------------------------------------
 V="virsh"

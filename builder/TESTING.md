@@ -93,6 +93,10 @@ Then delete or wipe the disposable host. Nothing from the test should remain on 
 - `setup.sh --check` flags `7z` if `p7zip-full` is not installed. Install it, per step 2.
 - Container targets (web/node) need at least one VM (Kali) running on the bridge, or the bridge has no
   carrier and they look unreachable. Start Kali first.
+- **osinfo names vs an older libosinfo:** a host whose `osinfo-db` predates a release (Debian bookworm
+  has no `debian12`) rejects `--osinfo debian12`. The Linux targets pick a known id at runtime
+  (`osinfo_pick`); `50-windows.sh` still hardcodes `win11`/`win2k22`, so on a very old libosinfo the
+  Windows step may need those adjusted (or `osinfo-db` updated).
 - **Nested test host only:** if you run this inside a VM whose own uplink is on `192.168.122.0/24`
   (libvirt's usual `default` subnet), the guest's `default` network cannot start
   (`Network is already in use by interface ...`) and Kali comes up without its internet NIC. This does

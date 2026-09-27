@@ -191,7 +191,7 @@ EOF
     --machine q35 \
     --disk path="$BLUE_DISK",bus=virtio,format=qcow2 \
     --network network="$LAB_NET_NAME",model=virtio,mac="$(mac_for_ip "$BLUE_IP")" \
-    --osinfo debian12 \
+    --osinfo "$(osinfo_pick debian12 debian11 debiantesting)" \
     --graphics spice --video virtio \
     --import --noautoconsole
   ok "VM 'blue' created (login root or ${BLUE_USER} / ${BLUE_PASS}; static $BLUE_IP)"
