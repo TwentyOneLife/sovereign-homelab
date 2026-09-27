@@ -164,8 +164,9 @@ nbd_free() {
   nbd_teardown_dm
   as_root sync
   as_root qemu-nbd --disconnect "$NBD_DEV" >/dev/null 2>&1 || true
-  local sz; sz="$(lsblk -bdno SIZE "$NBD_DEV" 2>/dev/null || echo 0)"
-  [ "${sz:-0}" = 0 ] || die "$NBD_DEV still busy after disconnect (size=$sz). Inspect: lsblk $NBD_DEV ; sudo dmsetup ls"
+  # lsblk right-pads the value; keep only digits so the compare is numeric.
+  local sz; sz="$(lsblk -bdno SIZE "$NBD_DEV" 2>/dev/null | tr -dc '0-9')"
+  [ -z "$sz" ] || [ "$sz" = 0 ] || die "$NBD_DEV still busy after disconnect (size=$sz). Inspect: lsblk $NBD_DEV ; sudo dmsetup ls"
 }
 
 nbd_up() {
