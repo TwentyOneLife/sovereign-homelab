@@ -5,6 +5,16 @@ export default defineConfig({
   title: 'Sovereign Homelab',
   description: 'Secure your homelab, secure your node.',
 
+  head: [
+    ['link', { rel: 'icon', href: '/sovereign-homelab/logo.png' }],
+    ['meta', { property: 'og:type', content: 'website' }],
+    ['meta', { property: 'og:title', content: 'Sovereign Homelab' }],
+    ['meta', { property: 'og:description', content: 'Secure your homelab, secure your node.' }],
+    ['meta', { property: 'og:image', content: 'https://twentyonelife.github.io/sovereign-homelab/og.png' }],
+    ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
+    ['meta', { name: 'twitter:image', content: 'https://twentyonelife.github.io/sovereign-homelab/og.png' }],
+  ],
+
 
   // GitHub Pages project path: https://twentyonelife.github.io/sovereign-homelab/
   base: '/sovereign-homelab/',
@@ -16,6 +26,7 @@ export default defineConfig({
   lastUpdated: true,
 
   themeConfig: {
+    logo: '/logo.png',
     nav: [
       { text: 'Home', link: '/' },
       { text: 'Course', link: '/' },

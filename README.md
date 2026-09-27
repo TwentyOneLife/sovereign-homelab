@@ -6,7 +6,7 @@
 
 An isolated, reproducible hacking lab and a hands-on course that teaches you to **attack your own network so you can defend it**. Built for self-hosters and Bitcoin node operators: you cannot be sovereign if the network your node runs on can be owned.
 
-[Course](https://twentyonelife.github.io/sovereign-homelab/) · [Build the lab](builder/) · [twentyone.life](https://twentyone.life) · [GitHub](https://github.com/TwentyOneLife)
+[Course](https://twentyonelife.github.io/sovereign-homelab/) · [Build the lab](builder/) · [GitHub](https://github.com/TwentyOneLife)
 
 </div>
 
@@ -49,7 +49,7 @@ Default usernames and passwords ship in [`lab.conf`](lab.conf). Because the lab 
 
 ## Built with, and for, TwentyOne.Life
 
-This is part of [TwentyOne.Life](https://twentyone.life): tools for running your own Bitcoin infrastructure, focused on Bitcoin Blake2b (BitcoinB2B). Follow on Nostr and Lightning at `TwentyOneLife@primal.net`.
+This is part of **TwentyOne.Life** (https://twentyone.life), a project building tools for running your own Bitcoin infrastructure, focused on Bitcoin Blake2b (BitcoinB2B). For everything else, the home base is the GitHub org: https://github.com/TwentyOneLife. Follow on Nostr and Lightning at `TwentyOneLife@primal.net`.
 
 ## Supporting this work
 
