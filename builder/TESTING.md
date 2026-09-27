@@ -93,3 +93,9 @@ Then delete or wipe the disposable host. Nothing from the test should remain on 
 - `setup.sh --check` flags `7z` if `p7zip-full` is not installed. Install it, per step 2.
 - Container targets (web/node) need at least one VM (Kali) running on the bridge, or the bridge has no
   carrier and they look unreachable. Start Kali first.
+- **Nested test host only:** if you run this inside a VM whose own uplink is on `192.168.122.0/24`
+  (libvirt's usual `default` subnet), the guest's `default` network cannot start
+  (`Network is already in use by interface ...`) and Kali comes up without its internet NIC. This does
+  not happen on a real host, whose LAN is some other subnet. To test the full path in a nested guest,
+  give the guest's uplink a different subnet, or re-define the guest's `default` net onto e.g.
+  `192.168.150.0/24` before running `10-kali.sh`.

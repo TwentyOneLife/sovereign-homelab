@@ -123,11 +123,22 @@ define_vm() {
   if vm_exists kali; then ok "VM 'kali' already defined"; return; fi
   local lab_mac; lab_mac="$(mac_for_ip "$KALI_IP")"
 
-  # NAT 'default' net gives Kali internet for updates. Start it if present.
+  # NAT 'default' net gives Kali internet for updates. Only attach it if we can
+  # actually bring it up: virt-install refuses to define against an inactive net,
+  # so a silently-failed start would otherwise abort the whole VM define.
   local nat_args=()
   if net_exists default; then
-    virsh net-start default >/dev/null 2>&1 || true
-    nat_args=(--network network=default,model=virtio,mac="$KALI_NAT_MAC")
+    virsh net-autostart default >/dev/null 2>&1 || true
+    net_active default || virsh net-start default >/dev/null 2>&1 || true
+    if net_active default; then
+      nat_args=(--network network=default,model=virtio,mac="$KALI_NAT_MAC")
+    else
+      warn "libvirt 'default' NAT network is present but could not be started:"
+      warn "    $(virsh net-start default 2>&1 | tail -1)"
+      warn "Defining Kali WITHOUT an internet NIC. Fix 'default' (often a host-LAN"
+      warn "subnet clash with 192.168.122.0/24), then: virsh net-start default and"
+      warn "re-attach, or re-run this script after removing the kali VM."
+    fi
   else
     warn "libvirt 'default' NAT network not found - Kali will have no update NIC."
     warn "create it with: virsh net-start default (or virsh net-define /usr/share/libvirt/networks/default.xml)"

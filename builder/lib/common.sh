@@ -58,6 +58,7 @@ V="virsh"
 vm_exists()   { $V dominfo "$1"   >/dev/null 2>&1; }
 vm_running()  { $V domstate "$1" 2>/dev/null | grep -q running; }
 net_exists()  { $V net-info "$1"  >/dev/null 2>&1; }
+net_active()  { $V net-info "$1" 2>/dev/null | grep -qiE '^Active: *yes'; }
 pool_exists() { $V pool-info "$1" >/dev/null 2>&1; }
 
 # --- verification helpers ---------------------------------------------------
