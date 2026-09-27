@@ -125,6 +125,7 @@ a subset of this table.)
 | `10.13.37.40` | **blue** | Debian hardening target | Used later as the "hardened" comparison box. |
 | `10.13.37.50` | **win-dc** | Active Directory DC `hacklab.local` | Windows/AD module. |
 | `10.13.37.51` | **win-cli** | Win11 desktop, domain-joined | Windows/AD module. |
+| `10.13.37.60` | **node** | Bitcoin node (regtest, RPC `:18443`) | The flagship "secure your node" module. Off by default. |
 
 **How to tell them apart without logging in:** the IP itself is the strongest clue in this lab because
 addressing is static and planned (host `.1`, kali `.10`, targets `.20+`). Vendor/MAC (`52:54:00...`)
