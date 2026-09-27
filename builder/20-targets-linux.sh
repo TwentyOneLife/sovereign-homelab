@@ -180,6 +180,9 @@ EOF
 FLAG-BLUE{harden-me-then-reattack}
 EOF
 
+  # branded login banner (backlink to TwentyOne.Life)
+  brand_motd | write_root "etc/motd"
+
   nbd_down; trap - EXIT
 
   log "defining VM 'blue'"

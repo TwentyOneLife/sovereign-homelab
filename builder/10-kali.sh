@@ -112,6 +112,9 @@ EOF
 KEYMAP=${LAB_KEYMAP}
 EOF
 
+  # branded login banner (backlink to TwentyOne.Life)
+  brand_motd | write_root "etc/motd"
+
   nbd_down; trap - EXIT
   ok "Kali image customized"
 }

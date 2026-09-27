@@ -168,6 +168,24 @@ write_root() {
   as_root tee "$dest" >/dev/null
 }
 
+# Branded login banner, emitted to stdout. Pipe into write_root "etc/motd" during
+# offline customization so every machine this builder makes carries the backlink.
+# Uses BRAND_GITHUB / BRAND_SITE from lab.conf, so a fork rebrands by editing that.
+brand_motd() {
+  cat <<EOF
+
+------------------------------------------------------------------
+  Sovereign Homelab - part of TwentyOne.Life
+  "Secure your homelab, secure your node."
+
+  GitHub:  ${BRAND_GITHUB}
+  Course:  ${BRAND_GITHUB}/sovereign-homelab
+  About:   ${BRAND_SITE}
+------------------------------------------------------------------
+
+EOF
+}
+
 # --- misc helpers -----------------------------------------------------------
 # prefix2netmask 24 -> 255.255.255.0
 prefix2netmask() {
