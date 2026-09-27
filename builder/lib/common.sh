@@ -108,9 +108,9 @@ verify_gpg() {
   need_cmd gpg
   log "gpg verifying $(basename "$signed") against $(basename "$sig")"
   out="$(gpg --status-fd 1 --verify "$sig" "$signed" 2>/dev/null || true)"
-  echo "$out" | grep -q "GOODSIG" || die "gpg: no good signature on $(basename "$signed")"
+  grep -q "GOODSIG" <<<"$out" || die "gpg: no good signature on $(basename "$signed")"
   local clean_fpr; clean_fpr="$(echo "$fpr" | tr -d ' ')"
-  if ! echo "$out" | grep -qi "VALIDSIG.*$clean_fpr"; then
+  if ! grep -qi "VALIDSIG.*$clean_fpr" <<<"$out"; then
     die "gpg: signature is not from the pinned key $fpr
        import the vendor key first, then re-run"
   fi
@@ -134,44 +134,90 @@ KALI_NAT_MAC="52:54:00:13:37:fe"
 # nbd_down        : unmount and disconnect. Always pair them (trap on the caller).
 NBD_DEV="/dev/nbd0"
 NBD_MNT=""
+
+# nbd_teardown_dm: deactivate/remove any device-mapper (LVM) nodes stacked on
+# $NBD_DEV. Metasploitable's disk is LVM; udev auto-activates its VG and the
+# resulting dm nodes keep the nbd device busy, so a later --disconnect silently
+# fails and the NEXT image cannot attach (partprobe gets EBUSY and the kernel
+# keeps the old partition table). Prefer a clean LVM deactivate, then mop up dm.
+nbd_teardown_dm() {
+  local dev; dev="$(basename "$NBD_DEV")"
+  if as_root sh -c 'command -v vgchange >/dev/null 2>&1'; then
+    local vg
+    for vg in $(as_root pvs --noheadings -o pv_name,vg_name 2>/dev/null \
+                  | awk -v d="$NBD_DEV" '$1 ~ d {print $2}' | sort -u); do
+      as_root vgchange -an "$vg" >/dev/null 2>&1 || true
+    done
+  fi
+  local dm
+  for dm in $(as_root dmsetup ls 2>/dev/null | awk 'NF && $1!="No"{print $1}'); do
+    if grep -qE "\(${dev}(p[0-9]+)?\)" <<<"$(as_root dmsetup deps -o devname "$dm" 2>/dev/null)"; then
+      as_root dmsetup remove --retry "$dm" >/dev/null 2>&1 || true
+    fi
+  done
+}
+
+# nbd_free: tear down dm, disconnect, and CONFIRM the device is really free.
+# A disconnected nbd device reports size 0; anything else means it is still
+# busy (usually a lingering dm node) and must be a hard error, not silence.
+nbd_free() {
+  nbd_teardown_dm
+  as_root sync
+  as_root qemu-nbd --disconnect "$NBD_DEV" >/dev/null 2>&1 || true
+  local sz; sz="$(lsblk -bdno SIZE "$NBD_DEV" 2>/dev/null || echo 0)"
+  [ "${sz:-0}" = 0 ] || die "$NBD_DEV still busy after disconnect (size=$sz). Inspect: lsblk $NBD_DEV ; sudo dmsetup ls"
+}
+
 nbd_up() {
   local img="$1"
   [ -f "$img" ] || die "nbd_up: image not found: $img"
   need_cmd qemu-nbd
   as_root modprobe nbd max_part=8 2>/dev/null || true
-  as_root qemu-nbd --disconnect "$NBD_DEV" >/dev/null 2>&1 || true
+  # start from a known-clean device (defend against leftovers from an aborted run)
+  nbd_free
   log "attaching $(basename "$img") to $NBD_DEV"
   as_root qemu-nbd --connect="$NBD_DEV" "$img"
-  # settle + rescan the partition table
   sleep 2
-  as_root partprobe "$NBD_DEV" 2>/dev/null || true
+  as_root partprobe "$NBD_DEV" 2>/dev/null || warn "partprobe $NBD_DEV failed (device busy?)"
+  as_root udevadm settle 2>/dev/null || true
+  # udev activates LVM asynchronously - too late for us, and the Metasploitable
+  # root lives on an LV. Activate any LVM PV on the image now, synchronously.
+  local p
+  for p in $(lsblk -rno NAME "$NBD_DEV" 2>/dev/null | tail -n +2); do
+    if [ "$(as_root blkid -s TYPE -o value "/dev/$p" 2>/dev/null)" = "LVM2_member" ]; then
+      as_root pvscan --cache -aay "/dev/$p" >/dev/null 2>&1 || true
+    fi
+  done
   as_root udevadm settle 2>/dev/null || true
   local part; part="$(nbd_root_part)"
-  [ -n "$part" ] || { as_root qemu-nbd --disconnect "$NBD_DEV" >/dev/null 2>&1 || true; die "no Linux root partition found on $img"; }
+  [ -n "$part" ] || { nbd_free; die "no Linux root partition found on $img"; }
   NBD_MNT="$(mktemp -d)"
   log "mounting root partition $part at $NBD_MNT"
   as_root mount "$part" "$NBD_MNT"
 }
+
 nbd_down() {
   [ -n "$NBD_MNT" ] && as_root umount "$NBD_MNT" 2>/dev/null || true
   [ -n "$NBD_MNT" ] && rmdir "$NBD_MNT" 2>/dev/null || true
   NBD_MNT=""
-  as_root sync
-  as_root qemu-nbd --disconnect "$NBD_DEV" >/dev/null 2>&1 || true
+  nbd_free
 }
-# nbd_root_part: largest ext2/3/4 partition on $NBD_DEV (layouts differ per image).
+
+# nbd_root_part: largest ext2/3/4 filesystem on $NBD_DEV (layouts differ per
+# image; Metasploitable's root is an LVM LV, others are a plain partition).
+# -p gives full device paths, so an LV comes back as /dev/mapper/<vg>-<lv>.
 nbd_root_part() {
   local best="" bestsz=0 name fs sz
   while read -r name fs sz; do
     # lsblk FSTYPE comes from udev and can be empty right after connect;
-    # fall back to a direct blkid probe (needs root on the nbd device).
-    [ -z "$fs" ] && fs="$(as_root blkid -s TYPE -o value "/dev/$name" 2>/dev/null || true)"
+    # fall back to a direct blkid probe (needs root on the device).
+    [ -z "$fs" ] && fs="$(as_root blkid -s TYPE -o value "$name" 2>/dev/null || true)"
     case "$fs" in
       ext2|ext3|ext4)
         [ -n "$sz" ] || sz=0
-        if [ "$sz" -gt "$bestsz" ]; then bestsz="$sz"; best="/dev/$name"; fi ;;
+        if [ "$sz" -gt "$bestsz" ]; then bestsz="$sz"; best="$name"; fi ;;
     esac
-  done < <(lsblk -brno NAME,FSTYPE,SIZE "$NBD_DEV" 2>/dev/null | tail -n +2)
+  done < <(lsblk -brnpo NAME,FSTYPE,SIZE "$NBD_DEV" 2>/dev/null | tail -n +2)
   echo "$best"
 }
 

@@ -54,6 +54,10 @@ check_prereqs() {
   for c in xorriso gpg sha256sum sha512sum openssl unzip curl; do have_cmd "$c" || { warn "missing (needed by some components): $c"; }; done
   have_cmd 7z || have_cmd 7za || warn "missing (needed for kali): 7z / 7za (p7zip-full)"
   have_cmd docker || warn "missing (needed for web): docker"
+  # lvm2 lives in /usr/sbin and these scripts run unprivileged, so command -v
+  # (have_cmd) misses it - check the sbin path too. Needed to mount the LVM
+  # Metasploitable image; without it, target customization silently mis-targets.
+  { [ -x /usr/sbin/vgchange ] || have_cmd vgchange; } || warn "missing (needed for the Metasploitable LVM image): lvm2"
   # KVM sanity
   [ -e /dev/kvm ] || warn "/dev/kvm not present - is hardware virtualization enabled and kvm loaded?"
   virsh version >/dev/null 2>&1 || { warn "cannot talk to libvirt (is libvirtd running, are you in the 'libvirt'/'kvm' groups?)"; miss=1; }

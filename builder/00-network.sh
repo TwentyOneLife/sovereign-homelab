@@ -59,7 +59,7 @@ setup_network() {
        which differs from lab.conf (bridge=$LAB_BRIDGE ip=$LAB_HOST_IP).
        Remove it (reset.sh) or reconcile lab.conf before continuing."
     fi
-    if virsh net-dumpxml "$LAB_NET_NAME" | grep -q "<forward"; then
+    if grep -q "<forward" <<<"$(virsh net-dumpxml "$LAB_NET_NAME")"; then
       die "network '$LAB_NET_NAME' has a <forward> element - it is NOT isolated. Refusing to use it."
     fi
     ok "network already defined, isolated and consistent"
@@ -85,7 +85,10 @@ EOF
   virsh net-start "$LAB_NET_NAME" >/dev/null 2>&1 || true
 
   # Hard self-check: an isolated network must never carry a forward element.
-  if virsh net-dumpxml "$LAB_NET_NAME" | grep -q "<forward"; then
+  # (here-string, not a pipe: under pipefail, `virsh | grep -q` would SIGPIPE
+  # virsh on a match and the `if` would read a real <forward> as absent - a
+  # false "isolated" pass on exactly the dangerous case.)
+  if grep -q "<forward" <<<"$(virsh net-dumpxml "$LAB_NET_NAME")"; then
     die "ISOLATION CHECK FAILED: '$LAB_NET_NAME' has a <forward> element."
   fi
   ok "isolation check passed: '$LAB_NET_NAME' has no <forward> element"

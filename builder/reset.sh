@@ -18,7 +18,7 @@ load_config
 need_cmd virsh
 usage() { awk 'NR==1{next} /^#/{s=$0; sub(/^# ?/,"",s); print s; next} {exit}' "$0"; exit "${1:-0}"; }
 
-is_uefi() { virsh dumpxml "$1" 2>/dev/null | grep -qE "firmware='efi'|pflash"; }
+is_uefi() { grep -qE "firmware='efi'|pflash" <<<"$(virsh dumpxml "$1" 2>/dev/null)"; }
 
 # lab_vms: every defined domain whose XML references the lab network. Picks up
 # any future VM on the lab net (e.g. 'node') without editing this list.
@@ -26,7 +26,7 @@ lab_vms() {
   local vm
   while read -r vm; do
     [ -n "$vm" ] || continue
-    if virsh dumpxml "$vm" 2>/dev/null | grep -q "network='$LAB_NET_NAME'\|<source network='$LAB_NET_NAME'"; then
+    if grep -q "network='$LAB_NET_NAME'\|<source network='$LAB_NET_NAME'" <<<"$(virsh dumpxml "$vm" 2>/dev/null)"; then
       echo "$vm"
     fi
   done < <(virsh list --all --name)

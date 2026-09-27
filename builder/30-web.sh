@@ -28,7 +28,7 @@ create_macvlan() {
 
 run_container() { # name image ip [extra run args...]
   local name="$1" image="$2" ip="$3"; shift 3
-  if docker ps -a --format '{{.Names}}' | grep -qx "$name"; then
+  if grep -qx "$name" <<<"$(docker ps -a --format '{{.Names}}')"; then
     ok "container '$name' exists (docker rm -f $name to rebuild)"; return
   fi
   log "pulling $image (host-side; the container itself gets no internet)"
