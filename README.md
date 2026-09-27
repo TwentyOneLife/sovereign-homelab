@@ -53,6 +53,8 @@ This is part of [TwentyOne.Life](https://twentyone.life): tools for running your
 
 ## Supporting this work
 
+Support TwentyOne.Life: **https://github.com/TwentyOneLife**
+
 Donations in **BitcoinB2B**, the coin of the Bitcoin Blake2b chain:
 
 ```
@@ -61,7 +63,7 @@ Donations in **BitcoinB2B**, the coin of the Bitcoin Blake2b chain:
 
 **Read this before sending.** Bitcoin Blake2b shares Bitcoin's address format and its genesis block, so this is a perfectly valid Bitcoin address as well, and nothing about it says which chain it belongs to. Send from a Bitcoin Blake2b wallet. Bitcoin sent to it is a different asset and is not a donation to this project, whatever your wallet shows you. There is no way to make that visible in the address itself; it is a property of the fork, not an oversight.
 
-Lightning tips (paid in Bitcoin on the SHA-256 chain) are welcome at `TwentyOneLife@primal.net`.
+More ways to pay, including Lightning and on-chain Bitcoin on the SHA-256 chain, are coming via our BTCPay Server. For now, Lightning tips are welcome at `TwentyOneLife@primal.net`.
 
 ## License
 

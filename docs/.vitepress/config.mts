@@ -58,7 +58,7 @@ export default defineConfig({
     },
 
     footer: {
-      message: 'Part of TwentyOne.Life. Support in BitcoinB2B: 1BH665bXvEqSuoWQUihiQiPpt2BqpzrgGD (send from a Bitcoin Blake2b wallet). Nostr/Lightning: TwentyOneLife@primal.net',
+      message: 'Part of TwentyOne.Life. Support: github.com/TwentyOneLife. BitcoinB2B: 1BH665bXvEqSuoWQUihiQiPpt2BqpzrgGD (send from a Bitcoin Blake2b wallet). Nostr/Lightning: TwentyOneLife@primal.net',
       copyright: 'MIT. TwentyOne.Life'
     }
   }
