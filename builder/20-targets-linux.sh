@@ -28,7 +28,7 @@ build_msf2() {
   if vm_exists msf2; then ok "VM 'msf2' already defined"; return; fi
   need_cmd unzip
   mkdir -p "$DOWNLOAD_DIR"
-  if [ ! -s "$MSF2_ZIP" ]; then need_cmd curl; run curl -fL --retry 3 -o "$MSF2_ZIP" "$MSF2_URL"; fi
+  if [ ! -s "$MSF2_ZIP" ]; then dl_fetch "$MSF2_URL" "$MSF2_ZIP"; fi
   verify_sha256 "$MSF2_ZIP" "$MSF2_SHA256"
 
   if [ ! -f "$MSF2_DISK" ]; then
@@ -96,12 +96,12 @@ build_blue() {
   if vm_exists blue; then ok "VM 'blue' already defined"; return; fi
   need_cmd openssl
   mkdir -p "$DOWNLOAD_DIR"
-  if [ ! -s "$DEB_QCOW" ]; then need_cmd curl; run curl -fL --retry 3 -o "$DEB_QCOW" "$DEB_BASEURL/$DEB_IMG"; fi
-  if [ ! -s "$DEB_SUMS" ]; then need_cmd curl; run curl -fL --retry 3 -o "$DEB_SUMS" "$DEB_BASEURL/SHA512SUMS"; fi
+  if [ ! -s "$DEB_QCOW" ]; then dl_fetch "$DEB_BASEURL/$DEB_IMG" "$DEB_QCOW"; fi
+  if [ ! -s "$DEB_SUMS" ]; then dl_fetch "$DEB_BASEURL/SHA512SUMS" "$DEB_SUMS"; fi
 
   # GPG-verify the checksums file if a key fingerprint was pinned; otherwise warn.
   if [ -n "$DEBIAN_CLOUD_KEY_FPR" ]; then
-    [ -s "$DEB_SUMS_SIG" ] || { need_cmd curl; run curl -fL --retry 3 -o "$DEB_SUMS_SIG" "$DEB_BASEURL/SHA512SUMS.sign"; }
+    [ -s "$DEB_SUMS_SIG" ] || { dl_fetch "$DEB_BASEURL/SHA512SUMS.sign" "$DEB_SUMS_SIG"; }
     verify_gpg "$DEB_SUMS_SIG" "$DEB_SUMS" "$DEBIAN_CLOUD_KEY_FPR"
   else
     warn "DEBIAN_CLOUD_KEY_FPR not set: verifying the sha512 only (no signature check on SHA512SUMS)."

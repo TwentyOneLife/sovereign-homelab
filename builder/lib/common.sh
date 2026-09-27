@@ -37,6 +37,15 @@ die()  { printf '%s[x]%s %s\n'  "$_c_red"    "$_c_reset" "$*" >&2; exit 1; }
 # run: echo a command, then execute it. Keeps the build auditable.
 run() { printf '    %s$ %s%s\n' "$_c_blue" "$*" "$_c_reset"; "$@"; }
 
+# fetch <url> <dest>: robust download. Resumes a partial (-C -) and retries
+# transient failures including a mid-stream reset (SourceForge and other mirrors
+# do this; plain `--retry` does not cover curl exit 56, `--retry-all-errors` does).
+dl_fetch() {
+  need_cmd curl
+  run curl -fL --retry 5 --retry-all-errors --retry-delay 3 \
+      --connect-timeout 30 -C - -o "$2" "$1"
+}
+
 # --- privilege --------------------------------------------------------------
 # as_root: run a single command as root only where genuinely needed.
 as_root() {
@@ -55,10 +64,14 @@ have_cmd() { command -v "$1" >/dev/null 2>&1; }
 
 # --- virsh / libvirt wrappers ----------------------------------------------
 V="virsh"
+# NOTE: match on a captured string via here-string, never `cmd | grep -q`.
+# Under `set -o pipefail`, grep -q closes the pipe on first match and virsh dies
+# with SIGPIPE (141), which pipefail then reports as failure - so the predicate
+# would wrongly return false even on a match. The here-string avoids the pipe.
 vm_exists()   { $V dominfo "$1"   >/dev/null 2>&1; }
-vm_running()  { $V domstate "$1" 2>/dev/null | grep -q running; }
+vm_running()  { grep -q running               <<<"$($V domstate "$1" 2>/dev/null)"; }
 net_exists()  { $V net-info "$1"  >/dev/null 2>&1; }
-net_active()  { $V net-info "$1" 2>/dev/null | grep -qiE '^Active: *yes'; }
+net_active()  { grep -qiE '^Active:[[:space:]]+yes' <<<"$($V net-info "$1" 2>/dev/null)"; }
 pool_exists() { $V pool-info "$1" >/dev/null 2>&1; }
 
 # --- verification helpers ---------------------------------------------------

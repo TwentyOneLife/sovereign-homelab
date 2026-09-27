@@ -33,7 +33,7 @@ POOL_DISK="$LAB_STORAGE_DIR/${IMG_BASE}.qcow2"
 fetch() { # url dest
   [ -s "$2" ] && { log "have $(basename "$2"), skipping download"; return; }
   need_cmd curl
-  run curl -fL --retry 3 -o "$2" "$1"
+  dl_fetch "$1" "$2"
 }
 
 download_and_verify() {
