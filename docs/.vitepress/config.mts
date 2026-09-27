@@ -1,21 +1,14 @@
 import { defineConfig } from 'vitepress'
-import { fileURLToPath, URL } from 'node:url'
 
 // Sovereign Homelab - VitePress site config.
-// The course markdown lives in the repo's docs/ folder (srcDir below),
-// so this config renders those pages directly.
 export default defineConfig({
   title: 'Sovereign Homelab',
   description: 'Secure your homelab, secure your node.',
 
-  // Render the course modules that live in ../docs (repo docs/ folder).
-  srcDir: '../docs',
 
   // GitHub Pages project path: https://twentyonelife.github.io/sovereign-homelab/
   base: '/sovereign-homelab/',
 
-  // Build output -> site/.vitepress/dist (matches .gitignore and the deploy workflow).
-  outDir: fileURLToPath(new URL('./dist', import.meta.url)),
 
   // Dark cypherpunk brand feel: dark by default, toggle kept.
   appearance: 'dark',

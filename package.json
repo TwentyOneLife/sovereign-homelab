@@ -1,0 +1,16 @@
+{
+  "name": "sovereign-homelab",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Sovereign Homelab course site (VitePress). Secure your homelab, secure your node.",
+  "scripts": {
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
+  },
+  "devDependencies": {
+    "vitepress": "^1.6.4",
+    "vue": "^3.5.0"
+  }
+}
