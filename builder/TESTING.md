@@ -84,8 +84,7 @@ Record anything that differs from the course text; fix the internal source and r
 ## 7. Teardown
 
 ```
-./builder/reset.sh --teardown     # removes the lab VMs, network and pool
-docker rm -f node dvwa juiceshop 2>/dev/null
+./builder/reset.sh teardown --yes   # removes the lab VMs, containers, network and pool (and offers to wipe disks)
 ```
 Then delete or wipe the disposable host. Nothing from the test should remain on it.
 

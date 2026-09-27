@@ -70,7 +70,7 @@ do_teardown() {
 
   # containers + macvlan
   if have_cmd docker && docker info >/dev/null 2>&1; then
-    docker rm -f dvwa juiceshop >/dev/null 2>&1 || true
+    docker rm -f dvwa juiceshop node >/dev/null 2>&1 || true
     docker network rm hacklab-mv >/dev/null 2>&1 || true
     ok "removed web containers + macvlan"
   fi
