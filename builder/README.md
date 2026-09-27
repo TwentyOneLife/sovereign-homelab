@@ -1,5 +1,7 @@
 # Sovereign Homelab - lab builder
 
+> Validating from scratch on a fresh host? See [TESTING.md](TESTING.md).
+
 Reproducible scripts that stand up the whole isolated security lab on your own Linux/KVM host. Everything (names, IPs, passwords, keyboard layout) is read from one file, [`../lab.conf`](../lab.conf), so you build the same lab we did, or your own variant, by editing that file.
 
 The lab is **fully isolated**: its virtual network has no route to your real LAN or the internet. Every target is a VM or container you own. The planted "secrets" are fake `FLAG-...{}` strings, never real keys. Only ever run these tools inside this lab.
