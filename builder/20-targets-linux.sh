@@ -175,6 +175,11 @@ EOF
       as_root ssh-keygen -q -t "$kt" -N "" -C "" -f "$NBD_MNT/etc/ssh/ssh_host_${kt}_key" </dev/null
   done
 
+  # hostname: the modules and README call this box 'blue'. Without it the prompt
+  # and `hostname` output read 'localhost' and blue.hacklab.lan never resolves.
+  write_root "etc/hostname" <<< "blue"
+  as_root sh -c "grep -qE '[[:space:]]blue([[:space:]]|\$)' '$NBD_MNT/etc/hosts' 2>/dev/null || printf '127.0.1.1\tblue\n' >> '$NBD_MNT/etc/hosts'"
+
   # keymap + scenario flag
   write_root "etc/default/keyboard" <<EOF
 XKBMODEL="pc105"
