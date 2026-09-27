@@ -141,3 +141,11 @@ Full teardown removes everything the builder created (VMs, containers, network, 
 ## Ethics and scope
 
 Everything here targets VMs you own on an isolated network, for learning. Never point these tools at any system you do not own and have explicit permission to test. The lab's "bank" and "wallet" secrets are planted fakes.
+
+## Note: the container targets need a VM on the bridge
+
+DVWA, Juice Shop and the Bitcoin node run as Docker macvlan containers on the isolated lab bridge. A
+Linux bridge with **only** macvlan sub-interfaces has no carrier and will not pass traffic, so those
+targets are only reachable while **at least one VM is running on the same bridge** (the Kali attacker,
+which you keep running anyway, provides it). If a container target seems unreachable, start Kali (or any
+lab VM) first. This is expected Linux bridge behaviour, not a bug.
