@@ -51,7 +51,7 @@ check_prereqs() {
   log "checking prerequisites"
   local miss=0
   for c in virsh qemu-img virt-install; do have_cmd "$c" || { warn "missing: $c"; miss=1; }; done
-  for c in xorriso gpg sha256sum sha512sum openssl unzip curl; do have_cmd "$c" || { warn "missing (needed by some components): $c"; }; done
+  for c in xorriso gpg sha256sum sha512sum openssl unzip curl ssh-keygen; do have_cmd "$c" || { warn "missing (needed by some components): $c"; }; done
   have_cmd 7z || have_cmd 7za || warn "missing (needed for kali): 7z / 7za (p7zip-full)"
   have_cmd docker || warn "missing (needed for web): docker"
   # lvm2 lives in /usr/sbin and these scripts run unprivileged, so command -v

@@ -164,7 +164,16 @@ EOF
   # ships without them and has no datasource to create them at first boot)
   as_root sed -i 's|^#\?PermitRootLogin.*|PermitRootLogin yes|; s|^#\?PasswordAuthentication.*|PasswordAuthentication yes|' \
     "$NBD_MNT/etc/ssh/sshd_config" 2>/dev/null || true
-  as_root chroot "$NBD_MNT" ssh-keygen -A >/dev/null 2>&1 || true
+  # Generate host keys on the HOST side, straight into the image's /etc/ssh.
+  # `chroot ssh-keygen -A` fails silently here because no /dev is bind-mounted
+  # in the chroot, so it cannot read /dev/urandom - leaving blue with no host
+  # keys, so sshd fails to start and 'ssh to blue' (module 06) is impossible.
+  need_cmd ssh-keygen
+  local kt
+  for kt in rsa ecdsa ed25519; do
+    [ -f "$NBD_MNT/etc/ssh/ssh_host_${kt}_key" ] || \
+      as_root ssh-keygen -q -t "$kt" -N "" -C "" -f "$NBD_MNT/etc/ssh/ssh_host_${kt}_key" </dev/null
+  done
 
   # keymap + scenario flag
   write_root "etc/default/keyboard" <<EOF
