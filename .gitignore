@@ -1,0 +1,13 @@
+# build artifacts / downloads / VM disks - never commit
+build/
+downloads/
+*.qcow2
+*.iso
+*.img
+# VitePress / node
+site/node_modules/
+site/.vitepress/cache/
+site/.vitepress/dist/
+# local overrides + secrets
+lab.local.conf
+.secrets/
