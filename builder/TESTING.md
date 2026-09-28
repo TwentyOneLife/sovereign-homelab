@@ -28,7 +28,7 @@ ls -l /dev/kvm                        # must exist
 ```
 sudo apt update
 sudo apt install -y \
-  qemu-system-x86 qemu-utils libvirt-daemon-system libvirt-clients \
+  git qemu-system-x86 qemu-utils libvirt-daemon-system libvirt-clients \
   virtinst xorriso p7zip-full unzip curl gnupg openssl docker.io lvm2 openssh-client \
   swtpm ovmf
 sudo usermod -aG libvirt,kvm,docker "$USER"
