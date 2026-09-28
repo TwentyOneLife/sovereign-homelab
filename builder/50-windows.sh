@@ -290,6 +290,17 @@ PS
 # ---------------------------------------------------------------------------
 # ISO builders + VM definitions
 # ---------------------------------------------------------------------------
+
+# poke_cd_boot <vm>: best-effort auto-press for the firmware's "Press any key to
+# boot from CD" at first boot, so the pair is fully hands-off. Backgrounded key
+# sends for ~90s; harmless once Setup is running (it ignores stray Enters, and
+# the answer file drives it). If the window is missed, the manual keypress (see
+# the printed steps) still works - this only removes it in the common case.
+poke_cd_boot() {
+  local vm="$1"
+  ( for _ in $(seq 1 60); do virsh send-key "$vm" KEY_ENTER >/dev/null 2>&1; sleep 1.5; done ) &
+}
+
 build_unattend_iso() { # xmlfile isoname label
   local dir; dir="$(mktemp -d)"
   cp "$1" "$dir/autounattend.xml"
@@ -338,6 +349,7 @@ define_win_dc() {
     --osinfo "$(osinfo_pick win2k22 win2k19 win2k16)" \
     --graphics spice --video qxl --noautoconsole
   ok "VM 'win-dc' defined (Administrator / \$LAB_PASS; static $WINDC_IP)"
+  poke_cd_boot win-dc
 }
 
 define_win_cli() {
@@ -365,6 +377,7 @@ define_win_cli() {
     --osinfo "$(osinfo_pick win11 win10)" \
     --graphics spice --video qxl --noautoconsole
   ok "VM 'win-cli' defined (${WINCLI_USER} / \$LAB_PASS; static $WINCLI_IP)"
+  poke_cd_boot win-cli
 }
 
 PREFIX="${LAB_SUBNET##*/}"
@@ -380,11 +393,12 @@ define_win_cli
 
 cat <<EOF
 
-$(printf '%s' "$_c_green")Windows pair defined.$(printf '%s' "$_c_reset") It installs and configures itself; you do ONE thing:
+$(printf '%s' "$_c_green")Windows pair defined.$(printf '%s' "$_c_reset") It installs and configures itself - normally hands-off.
 
-  1. Open each VM's console once (virt-manager, SPICE) and, if you see
-     "Press any key to boot from CD", press a key (only needed for the very first
-     boot; if it drops to the UEFI menu, pick the DVD/CDROM entry).
+  The builder auto-presses the first-boot "Press any key to boot from CD" prompt.
+  Only if a VM instead sits at a firmware menu / UEFI shell (a missed auto-press)
+  do you need to open its console (virt-manager, SPICE) and press a key at the CD
+  prompt, or pick the DVD/CDROM entry.
 
   From there it is hands-off (give it ~30-60 min, several automatic reboots):
    - Setup installs unattended and the VMs continue through their own reboots
