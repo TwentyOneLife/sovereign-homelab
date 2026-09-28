@@ -12,9 +12,9 @@
 #  - A firmware boot-manager pick is sometimes needed to boot the install ISO.
 #  - The VMs boot disk-first with the install DVD second and reboot on their own
 #    through Setup (no power-off, no 'virsh start' step).
-#  - Creating the domain users and joining win-cli are two scripts you run
-#    inside the guests from the attached scripts CD (there is no guest agent,
-#    and a non-US keyboard defeats console key-injection).
+#  - Creating the domain users and joining win-cli are automated in the answer
+#    files (RunOnce after the DC promotes; win-cli waits for the DC then joins).
+#    The same scripts are on the attached CD as a manual fallback.
 set -euo pipefail
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
 load_config
@@ -123,11 +123,13 @@ gen_win11_unattend() {
           </LocalAccount>
         </LocalAccounts>
       </UserAccounts>
-      <AutoLogon><Enabled>true</Enabled><Username>${WINCLI_USER}</Username><LogonCount>1</LogonCount><Password><Value>${LAB_PASS}</Value><PlainText>true</PlainText></Password></AutoLogon>
+      <AutoLogon><Enabled>true</Enabled><Username>${WINCLI_USER}</Username><LogonCount>2</LogonCount><Password><Value>${LAB_PASS}</Value><PlainText>true</PlainText></Password></AutoLogon>
       <FirstLogonCommands>
         <SynchronousCommand wcm:action="add"><Order>1</Order><CommandLine>powershell -NoProfile -Command "\$a=Get-NetAdapter | Where-Object Status -eq 'Up' | Select-Object -First 1; New-NetIPAddress -InterfaceIndex \$a.ifIndex -IPAddress ${WINCLI_IP} -PrefixLength ${PREFIX} -ErrorAction SilentlyContinue; Set-DnsClientServerAddress -InterfaceIndex \$a.ifIndex -ServerAddresses ${WINDC_IP}"</CommandLine></SynchronousCommand>
         <SynchronousCommand wcm:action="add"><Order>2</Order><CommandLine>reg add "HKLM\System\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections /t REG_DWORD /d 0 /f</CommandLine></SynchronousCommand>
         <SynchronousCommand wcm:action="add"><Order>3</Order><CommandLine>netsh advfirewall firewall set rule group="remote desktop" new enable=Yes</CommandLine></SynchronousCommand>
+        <SynchronousCommand wcm:action="add"><Order>4</Order><CommandLine>powershell -NoProfile -ExecutionPolicy Bypass -Command "New-Item C:\lab -ItemType Directory -Force | Out-Null; \$v=(Get-Volume -FileSystemLabel 'LABSCRIPTS').DriveLetter; Copy-Item -Force (\$v+':\2-join-domain.ps1') C:\lab; Copy-Item -Force (\$v+':\3-plant-loot.ps1') C:\lab; New-ItemProperty -Path 'HKLM:\Software\Microsoft\Windows\CurrentVersion\RunOnce' -Name 'PlantLoot' -Value 'powershell -NoProfile -ExecutionPolicy Bypass -File C:\lab\3-plant-loot.ps1' -PropertyType String -Force | Out-Null"</CommandLine></SynchronousCommand>
+        <SynchronousCommand wcm:action="add"><Order>5</Order><CommandLine>powershell -NoProfile -ExecutionPolicy Bypass -File C:\lab\2-join-domain.ps1</CommandLine></SynchronousCommand>
       </FirstLogonCommands>
     </component>
   </settings>
@@ -191,8 +193,9 @@ gen_srv_unattend() {
       <AutoLogon><Enabled>true</Enabled><Username>Administrator</Username><LogonCount>2</LogonCount><Password><Value>${LAB_PASS}</Value><PlainText>true</PlainText></Password></AutoLogon>
       <FirstLogonCommands>
         <SynchronousCommand wcm:action="add"><Order>1</Order><CommandLine>powershell -NoProfile -Command "\$a=Get-NetAdapter | Where-Object Status -eq 'Up' | Select-Object -First 1; New-NetIPAddress -InterfaceIndex \$a.ifIndex -IPAddress ${WINDC_IP} -PrefixLength ${PREFIX} -ErrorAction SilentlyContinue; Set-DnsClientServerAddress -InterfaceIndex \$a.ifIndex -ServerAddresses 127.0.0.1"</CommandLine></SynchronousCommand>
-        <SynchronousCommand wcm:action="add"><Order>2</Order><CommandLine>powershell -NoProfile -Command "Install-WindowsFeature AD-Domain-Services -IncludeManagementTools"</CommandLine></SynchronousCommand>
-        <SynchronousCommand wcm:action="add"><Order>3</Order><CommandLine>powershell -NoProfile -Command "Import-Module ADDSDeployment; Install-ADDSForest -DomainName '${AD_DOMAIN}' -DomainNetbiosName '${AD_NETBIOS}' -SafeModeAdministratorPassword (ConvertTo-SecureString '${LAB_PASS}' -AsPlainText -Force) -InstallDns -Force"</CommandLine></SynchronousCommand>
+        <SynchronousCommand wcm:action="add"><Order>2</Order><CommandLine>powershell -NoProfile -ExecutionPolicy Bypass -Command "New-Item C:\lab -ItemType Directory -Force | Out-Null; \$v=(Get-Volume -FileSystemLabel 'LABSCRIPTS').DriveLetter; Copy-Item -Force (\$v+':\1-create-users.ps1') C:\lab\1-create-users.ps1; New-ItemProperty -Path 'HKLM:\Software\Microsoft\Windows\CurrentVersion\RunOnce' -Name 'CreateUsers' -Value 'powershell -NoProfile -ExecutionPolicy Bypass -File C:\lab\1-create-users.ps1' -PropertyType String -Force | Out-Null"</CommandLine></SynchronousCommand>
+        <SynchronousCommand wcm:action="add"><Order>3</Order><CommandLine>powershell -NoProfile -Command "Install-WindowsFeature AD-Domain-Services -IncludeManagementTools"</CommandLine></SynchronousCommand>
+        <SynchronousCommand wcm:action="add"><Order>4</Order><CommandLine>powershell -NoProfile -Command "Import-Module ADDSDeployment; Install-ADDSForest -DomainName '${AD_DOMAIN}' -DomainNetbiosName '${AD_NETBIOS}' -SafeModeAdministratorPassword (ConvertTo-SecureString '${LAB_PASS}' -AsPlainText -Force) -InstallDns -Force"</CommandLine></SynchronousCommand>
       </FirstLogonCommands>
     </component>
   </settings>
@@ -207,11 +210,14 @@ gen_scripts_cd() {
   local sd="$WORK/scripts"; rm -rf "$sd"; mkdir -p "$sd"
 
   cat > "$sd/RUN-ME.txt" <<EOF
-Sovereign Homelab - Windows/AD post-install steps
-==================================================
-Run in this order (both guests auto-log in as an administrator):
+Sovereign Homelab - Windows/AD post-install (FALLBACK)
+======================================================
+These steps run AUTOMATICALLY: win-dc creates the domain users after it promotes,
+and win-cli waits for the DC, joins the domain and plants the loot. You only need
+these if an auto-step did not complete (e.g. the DC was still promoting). Both
+guests auto-log in as an administrator.
 
-ON win-dc (after it finishes promoting to a domain controller and reboots):
+ON win-dc (after it has finished promoting to a domain controller):
   1) Open PowerShell as Administrator, run:  D:\\1-create-users.ps1
      (creates the domain users ${AD_USER1} and ${AD_SVC}; puts ${AD_SVC} in Domain Admins)
 
@@ -225,7 +231,14 @@ EOF
 
   cat > "$sd/1-create-users.ps1" <<EOF
 # Run on the DC. Creates domain users from lab.conf values.
-Import-Module ActiveDirectory
+# Waits for AD DS so it is safe to run right after the promotion reboot (the
+# builder auto-runs it via RunOnce) or by hand from the scripts CD.
+\$ok = \$false
+for (\$i = 0; \$i -lt 60; \$i++) {
+  try { Import-Module ActiveDirectory -ErrorAction Stop; if (Get-ADDomain -ErrorAction Stop) { \$ok = \$true; break } } catch {}
+  Start-Sleep -Seconds 10
+}
+if (-not \$ok) { Write-Warning 'AD DS not ready after 10 min - run this script again from the scripts CD once the DC has finished promoting.'; exit 1 }
 \$pw = ConvertTo-SecureString '${LAB_PASS}' -AsPlainText -Force
 New-ADUser -Name '${AD_USER1}' -SamAccountName '${AD_USER1}' -AccountPassword \$pw -Enabled \$true -PasswordNeverExpires \$true -ErrorAction SilentlyContinue
 New-ADUser -Name '${AD_SVC}'  -SamAccountName '${AD_SVC}'  -AccountPassword \$pw -Enabled \$true -PasswordNeverExpires \$true -ErrorAction SilentlyContinue
@@ -235,13 +248,20 @@ Write-Host 'Domain users created.'
 EOF
 
   cat > "$sd/2-join-domain.ps1" <<EOF
-# Run on win-cli. Points DNS at the DC, joins the domain, reboots.
+# Run on win-cli. Points DNS at the DC, waits for the domain to answer, joins it,
+# reboots. Safe to auto-run right after first boot: it waits up to ~40 min for
+# win-dc to finish promoting. Idempotent - exits cleanly if already joined.
 \$a = Get-NetAdapter | Where-Object Status -eq 'Up' | Select-Object -First 1
 Set-DnsClientServerAddress -InterfaceIndex \$a.ifIndex -ServerAddresses ${WINDC_IP}
-if (-not (Resolve-DnsName '${AD_DOMAIN}' -ErrorAction SilentlyContinue)) {
-  Write-Warning 'Cannot resolve ${AD_DOMAIN}. Is win-dc up and promoted? DNS = ${WINDC_IP}'
-  exit 1
+if ((Get-CimInstance Win32_ComputerSystem).PartOfDomain) { Write-Host 'Already domain-joined.'; exit 0 }
+\$ready = \$false
+for (\$i = 0; \$i -lt 80; \$i++) {
+  \$dns  = Resolve-DnsName '${AD_DOMAIN}' -Server ${WINDC_IP} -ErrorAction SilentlyContinue
+  \$ldap = Test-NetConnection ${WINDC_IP} -Port 389 -WarningAction SilentlyContinue
+  if (\$dns -and \$ldap.TcpTestSucceeded) { \$ready = \$true; break }
+  Start-Sleep -Seconds 30
 }
+if (-not \$ready) { Write-Warning 'DC ${WINDC_IP} / ${AD_DOMAIN} not reachable after ~40 min - run this later from the scripts CD.'; exit 1 }
 \$cred = New-Object System.Management.Automation.PSCredential('${AD_NETBIOS}\Administrator', (ConvertTo-SecureString '${LAB_PASS}' -AsPlainText -Force))
 Add-Computer -DomainName '${AD_DOMAIN}' -Credential \$cred -Force -Restart
 EOF
@@ -360,21 +380,26 @@ define_win_cli
 
 cat <<EOF
 
-$(printf '%s' "$_c_green")Windows pair defined.$(printf '%s' "$_c_reset") What happens now (some manual steps - be at the console):
+$(printf '%s' "$_c_green")Windows pair defined.$(printf '%s' "$_c_reset") It installs and configures itself; you do ONE thing:
 
-  1. Open the console for each VM:  virt-manager  (or: virsh console is text-only, use SPICE)
-  2. If you see "Press any key to boot from CD", press a key. If it boots to the UEFI
-     shell / firmware menu instead, pick the DVD/CDROM entry to start Windows Setup.
-  3. Setup runs UNATTENDED from autounattend.xml and the VM continues through its
-     own reboots on its own - no power-off, no 'virsh start' needed.
-  4. win-dc auto-installs AD and promotes itself to a DC for '${AD_DOMAIN}'. Give it
-     a few minutes and a couple of automatic reboots.
-  5. Run the post-install steps from the attached scripts CD - see RUN-ME.txt on it:
-       on win-dc:  D:\\1-create-users.ps1        (create domain users)
-       on win-cli: D:\\2-join-domain.cmd         (join the domain, reboot)
-                   D:\\3-plant-loot.ps1          (plant the fake FLAG files)
-  6. When each VM is settled, snapshot it (win VMs use EXTERNAL disk snapshots -
-     see reset.sh) so you can revert in seconds.
+  1. Open each VM's console once (virt-manager, SPICE) and, if you see
+     "Press any key to boot from CD", press a key (only needed for the very first
+     boot; if it drops to the UEFI menu, pick the DVD/CDROM entry).
+
+  From there it is hands-off (give it ~30-60 min, several automatic reboots):
+   - Setup installs unattended and the VMs continue through their own reboots
+     (no power-off, no 'virsh start').
+   - win-dc promotes itself to a DC for '${AD_DOMAIN}' and then auto-creates the
+     domain users (${AD_USER1}, ${AD_SVC}).
+   - win-cli waits for the DC, joins the domain, reboots, and plants the fake
+     FLAG files.
+
+  Fallback: if an auto-step did not complete (e.g. the DC was slow), the same
+  scripts are on the attached scripts CD - see RUN-ME.txt (1-create-users.ps1 on
+  win-dc; 2-join-domain.cmd then 3-plant-loot.ps1 on win-cli).
+
+  When each VM is settled, snapshot it (win VMs use EXTERNAL disk snapshots - see
+  reset.sh) so you can revert in seconds.
 
 Resource note: run this Windows pair with the Linux targets OFF (memory budget).
 EOF
