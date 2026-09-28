@@ -298,7 +298,12 @@ PS
 # the printed steps) still works - this only removes it in the common case.
 poke_cd_boot() {
   local vm="$1"
-  ( for _ in $(seq 1 60); do virsh send-key "$vm" KEY_ENTER >/dev/null 2>&1; sleep 1.5; done ) &
+  # Short burst only. The "Press any key to boot from CD" prompt appears in the
+  # first ~15s. Keep poking past that and, once Setup's GUI is up, a stray Enter
+  # lands on the "Cancel" button and opens an "Are you sure you want to quit?"
+  # dialog that stalls the install. ~15s is enough to catch the prompt; if it is
+  # missed (very slow boot), the manual keypress fallback (printed steps) applies.
+  ( for _ in $(seq 1 15); do virsh send-key "$vm" KEY_ENTER >/dev/null 2>&1; sleep 1; done ) &
 }
 
 build_unattend_iso() { # xmlfile isoname label
