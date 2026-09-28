@@ -10,8 +10,8 @@
 # HONEST ABOUT THE MANUAL BITS (see the printed steps at the end):
 #  - At the UEFI console you may see "Press any key to boot from CD" - press one.
 #  - A firmware boot-manager pick is sometimes needed to boot the install ISO.
-#  - virt-install's install phase sets the VM to power OFF after the first
-#    reboot; you then 'virsh start' it to continue. This is expected.
+#  - The VMs boot disk-first with the install DVD second and reboot on their own
+#    through Setup (no power-off, no 'virsh start' step).
 #  - Creating the domain users and joining win-cli are two scripts you run
 #    inside the guests from the attached scripts CD (there is no guest agent,
 #    and a non-US keyboard defeats console key-injection).
@@ -300,15 +300,18 @@ define_win_dc() {
   scr="$(place_iso "$WORK/lab-scripts.iso" lab-scripts.iso)"
   run virsh pool-refresh "$LAB_STORAGE_POOL" >/dev/null || true
   log "defining VM 'win-dc' (Server 2022, UEFI)"
-  # --cdrom marks the install phase: virt-install sets on_reboot=destroy, so the
-  # VM powers OFF after the first reboot (then you 'virsh start' it). The unattend
-  # and scripts CDs are extra drives. No fixed cdrom boot order, so a later stray
-  # keypress cannot re-trigger the wiping installer.
+  # Boot the hard disk first, the install DVD second (--import = no install phase,
+  # just boot what we attach). First boot the disk is empty, so firmware falls
+  # through to the DVD and Setup runs; once Windows is on the disk it boots from
+  # there and the DVD is ignored. So the VM survives its own reboots
+  # (on_reboot=restart) with no manual 'virsh start', and because the DVD is never
+  # first it can never re-trigger the wiping installer.
   run virt-install --connect "$LIBVIRT_DEFAULT_URI" --name win-dc \
     --memory 4096 --vcpus 2 --cpu host-passthrough \
     --machine q35 --boot uefi \
-    --disk path="$LAB_STORAGE_DIR/win-dc.qcow2",size=60,bus=sata,format=qcow2 \
-    --cdrom "$iso" \
+    --import --events on_reboot=restart \
+    --disk path="$LAB_STORAGE_DIR/win-dc.qcow2",size=60,bus=sata,format=qcow2,boot.order=1 \
+    --disk device=cdrom,path="$iso",bus=sata,boot.order=2 \
     --disk device=cdrom,path="$ua",bus=sata \
     --disk device=cdrom,path="$scr",bus=sata \
     --network network="$LAB_NET_NAME",model=e1000,mac="$(mac_for_ip "$WINDC_IP")" \
@@ -332,9 +335,10 @@ define_win_cli() {
   run virt-install --connect "$LIBVIRT_DEFAULT_URI" --name win-cli \
     --memory 4096 --vcpus 2 --cpu host-passthrough \
     --machine q35 --boot uefi \
+    --import --events on_reboot=restart \
     --tpm backend.type=emulator,backend.version=2.0,model=tpm-crb \
-    --disk path="$LAB_STORAGE_DIR/win-cli.qcow2",size=64,bus=sata,format=qcow2 \
-    --cdrom "$iso" \
+    --disk path="$LAB_STORAGE_DIR/win-cli.qcow2",size=64,bus=sata,format=qcow2,boot.order=1 \
+    --disk device=cdrom,path="$iso",bus=sata,boot.order=2 \
     --disk device=cdrom,path="$ua",bus=sata \
     --disk device=cdrom,path="$scr",bus=sata \
     --network network="$LAB_NET_NAME",model=e1000,mac="$(mac_for_ip "$WINCLI_IP")" \
@@ -361,9 +365,8 @@ $(printf '%s' "$_c_green")Windows pair defined.$(printf '%s' "$_c_reset") What h
   1. Open the console for each VM:  virt-manager  (or: virsh console is text-only, use SPICE)
   2. If you see "Press any key to boot from CD", press a key. If it boots to the UEFI
      shell / firmware menu instead, pick the DVD/CDROM entry to start Windows Setup.
-  3. Setup runs UNATTENDED from autounattend.xml. After the FIRST reboot the VM will
-     POWER OFF (virt-install sets that for the install phase). Start it again:
-         virsh start win-dc     # and later:  virsh start win-cli
+  3. Setup runs UNATTENDED from autounattend.xml and the VM continues through its
+     own reboots on its own - no power-off, no 'virsh start' needed.
   4. win-dc auto-installs AD and promotes itself to a DC for '${AD_DOMAIN}'. Give it
      a few minutes and a couple of automatic reboots.
   5. Run the post-install steps from the attached scripts CD - see RUN-ME.txt on it:
