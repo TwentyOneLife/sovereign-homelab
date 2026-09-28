@@ -156,7 +156,13 @@ gen_srv_unattend() {
       </DiskConfiguration>
       <ImageInstall><OSImage>
         <InstallTo><DiskID>0</DiskID><PartitionID>3</PartitionID></InstallTo>
-        <InstallFrom><MetaData wcm:action="add"><Key>/IMAGE/NAME</Key><Value>Windows Server 2022 Standard Evaluation (Desktop Experience)</Value></MetaData></InstallFrom>
+        <!-- Select the image by INDEX, not name. /IMAGE/NAME matches the WIM <NAME>
+             field, but Setup's picker shows <DISPLAYNAME>; on the Server 2022 eval the
+             two differ (index 2 NAME="Windows Server 2022 SERVERSTANDARD",
+             DISPLAYNAME="Windows Server 2022 Standard Evaluation (Desktop Experience)"),
+             so a /IMAGE/NAME of the display string matched nothing and Setup prompted.
+             Index 2 = Standard w/ Desktop Experience, fixed on every Server 2022 eval ISO. -->
+        <InstallFrom><MetaData wcm:action="add"><Key>/IMAGE/INDEX</Key><Value>2</Value></MetaData></InstallFrom>
       </OSImage></ImageInstall>
       <UserData><ProductKey><WillShowUI>OnError</WillShowUI></ProductKey><AcceptEula>true</AcceptEula></UserData>
     </component>
