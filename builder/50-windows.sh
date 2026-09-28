@@ -300,7 +300,7 @@ define_win_dc() {
     --disk device=cdrom,path="$ua",bus=sata \
     --disk device=cdrom,path="$scr",bus=sata \
     --network network="$LAB_NET_NAME",model=e1000,mac="$(mac_for_ip "$WINDC_IP")" \
-    --osinfo win2k22 \
+    --osinfo "$(osinfo_pick win2k22 win2k19 win2k16)" \
     --graphics spice --video qxl --noautoconsole
   ok "VM 'win-dc' defined (Administrator / \$LAB_PASS; static $WINDC_IP)"
 }
@@ -326,7 +326,7 @@ define_win_cli() {
     --disk device=cdrom,path="$ua",bus=sata \
     --disk device=cdrom,path="$scr",bus=sata \
     --network network="$LAB_NET_NAME",model=e1000,mac="$(mac_for_ip "$WINCLI_IP")" \
-    --osinfo win11 \
+    --osinfo "$(osinfo_pick win11 win10)" \
     --graphics spice --video qxl --noautoconsole
   ok "VM 'win-cli' defined (${WINCLI_USER} / \$LAB_PASS; static $WINCLI_IP)"
 }

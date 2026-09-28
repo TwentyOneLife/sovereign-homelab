@@ -58,6 +58,11 @@ check_prereqs() {
   # (have_cmd) misses it - check the sbin path too. Needed to mount the LVM
   # Metasploitable image; without it, target customization silently mis-targets.
   { [ -x /usr/sbin/vgchange ] || have_cmd vgchange; } || warn "missing (needed for the Metasploitable LVM image): lvm2"
+  # Windows/AD targets need an emulated TPM (swtpm) and UEFI firmware (ovmf/edk2);
+  # neither is pulled in by libvirt, and qemu only 'recommends' ovmf.
+  have_cmd swtpm || warn "missing (needed for the Windows/AD vTPM): swtpm"
+  ls /usr/share/OVMF/OVMF_CODE*.fd >/dev/null 2>&1 || ls /usr/share/*/*OVMF*CODE*.fd >/dev/null 2>&1 \
+    || warn "missing (needed for UEFI Windows VMs): ovmf"
   # KVM sanity
   [ -e /dev/kvm ] || warn "/dev/kvm not present - is hardware virtualization enabled and kvm loaded?"
   virsh version >/dev/null 2>&1 || { warn "cannot talk to libvirt (is libvirtd running, are you in the 'libvirt'/'kvm' groups?)"; miss=1; }
