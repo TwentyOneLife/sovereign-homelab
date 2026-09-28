@@ -62,7 +62,7 @@ Put the two Windows ISOs where the builder can find them: either set `WIN11_ISO`
 
 Downloaded images and intermediate files live in `builder/downloads/` (gitignored, user-writable). Final VM disks are placed into the libvirt pool at `LAB_STORAGE_DIR`.
 
-**Optional stronger Debian check.** The Debian image is verified by sha512 against the checksums file. To also GPG-verify the checksums file itself, get the Debian cloud signing key fingerprint from cloud.debian.org, then run the builder with `DEBIAN_CLOUD_KEY_FPR="<fingerprint>"` exported so `20-targets-linux.sh` checks the signature too.
+**Debian image provenance.** The Debian cloud image is verified by sha512 against `SHA512SUMS`, both fetched over TLS from cloud.debian.org. cloud.debian.org does not publish a detached OpenPGP signature (`SHA512SUMS.sign`) for these images, so there is no upstream signature to pin a key against; the sha512-over-TLS check is the integrity guarantee for this target.
 
 ## 3. Configure
 

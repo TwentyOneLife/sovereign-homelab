@@ -86,11 +86,7 @@ DEB_IMG="debian-12-genericcloud-amd64.qcow2"
 DEB_BASEURL="https://cloud.debian.org/images/cloud/bookworm/latest"
 DEB_QCOW="$DOWNLOAD_DIR/$DEB_IMG"
 DEB_SUMS="$DOWNLOAD_DIR/SHA512SUMS.debian"
-DEB_SUMS_SIG="$DOWNLOAD_DIR/SHA512SUMS.debian.sign"
 BLUE_DISK="$LAB_STORAGE_DIR/blue.qcow2"
-# Optional: set to the Debian cloud signing key fingerprint to GPG-verify the
-# checksums file too (see README). Empty = sha512 only, with a warning.
-DEBIAN_CLOUD_KEY_FPR="${DEBIAN_CLOUD_KEY_FPR:-}"
 
 build_blue() {
   if vm_exists blue; then ok "VM 'blue' already defined"; return; fi
@@ -99,15 +95,12 @@ build_blue() {
   if [ ! -s "$DEB_QCOW" ]; then dl_fetch "$DEB_BASEURL/$DEB_IMG" "$DEB_QCOW"; fi
   if [ ! -s "$DEB_SUMS" ]; then dl_fetch "$DEB_BASEURL/SHA512SUMS" "$DEB_SUMS"; fi
 
-  # GPG-verify the checksums file if a key fingerprint was pinned; otherwise warn.
-  if [ -n "$DEBIAN_CLOUD_KEY_FPR" ]; then
-    [ -s "$DEB_SUMS_SIG" ] || { dl_fetch "$DEB_BASEURL/SHA512SUMS.sign" "$DEB_SUMS_SIG"; }
-    verify_gpg "$DEB_SUMS_SIG" "$DEB_SUMS" "$DEBIAN_CLOUD_KEY_FPR"
-  else
-    warn "DEBIAN_CLOUD_KEY_FPR not set: verifying the sha512 only (no signature check on SHA512SUMS)."
-    warn "See README to pin the Debian cloud signing key for full provenance."
-  fi
-  # sha512 of the image against the (now possibly signed) checksums file.
+  # Provenance: cloud.debian.org does NOT publish a detached SHA512SUMS.sign for
+  # these images (checked: 404 on both latest/ and the dated build dir), so there
+  # is no GPG signature to pin a key against. Integrity here is the sha512 of the
+  # image checked against SHA512SUMS, both fetched over TLS from cloud.debian.org.
+  log "integrity: sha512 over TLS (Debian publishes no detached signature for these images)"
+  # sha512 of the image against the checksums file.
   local want got
   want="$(awk -v f="$DEB_IMG" '$2 ~ f {print $1}' "$DEB_SUMS" | head -1)"
   [ -n "$want" ] || die "no sha512 line for $DEB_IMG in SHA512SUMS"

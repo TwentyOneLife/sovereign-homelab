@@ -41,16 +41,22 @@ INLOC="$(input_locale)"
 
 # --- resolve the user-supplied ISOs ----------------------------------------
 resolve_iso() { # varvalue glob description
-  local given="$1" glob="$2" desc="$3" found
+  local given="$1" glob="$2" desc="$3"
   if [ -n "$given" ]; then
     [ -f "$given" ] || die "$desc ISO not found at: $given"
     echo "$given"; return
   fi
-  found="$(find "$DOWNLOAD_DIR" -maxdepth 1 -iname "$glob" 2>/dev/null | head -1)"
-  [ -n "$found" ] || die "$desc ISO not set and none matching '$glob' in $DOWNLOAD_DIR.
+  local matches=()
+  mapfile -t matches < <(find "$DOWNLOAD_DIR" -maxdepth 1 -iname "$glob" 2>/dev/null | sort)
+  case ${#matches[@]} in
+    0) die "$desc ISO not set and none matching '$glob' in $DOWNLOAD_DIR.
        Download the free Evaluation Center ISO (see builder/README.md), then set
-       its path in lab.conf (WIN11_ISO / WINSRV_ISO) or drop it into $DOWNLOAD_DIR."
-  echo "$found"
+       its path in lab.conf/lab.local.conf (WIN11_ISO / WINSRV_ISO) or drop it into $DOWNLOAD_DIR." ;;
+    1) echo "${matches[0]}" ;;
+    *) die "$desc: multiple ISOs match '$glob' in $DOWNLOAD_DIR - refusing to guess:
+$(printf '         %s\n' "${matches[@]}")
+       Set WIN11_ISO / WINSRV_ISO in lab.local.conf to the one you want." ;;
+  esac
 }
 
 # ---------------------------------------------------------------------------
