@@ -58,7 +58,7 @@ Support TwentyOne.Life: **https://github.com/TwentyOneLife**
 Donations in **BitcoinB2B**, the coin of the Bitcoin Blake2b chain:
 
 ```
-1BH665bXvEqSuoWQUihiQiPpt2BqpzrgGD
+bc1ql66ssq24t7w4jl8updfrs820efnujp0m5jjuqk
 ```
 
 **Read this before sending.** Bitcoin Blake2b shares Bitcoin's address format and its genesis block, so this is a perfectly valid Bitcoin address as well, and nothing about it says which chain it belongs to. Send from a Bitcoin Blake2b wallet. Bitcoin sent to it is a different asset and is not a donation to this project, whatever your wallet shows you. There is no way to make that visible in the address itself; it is a property of the fork, not an oversight.
