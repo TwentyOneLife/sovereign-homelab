@@ -69,7 +69,7 @@ export default defineConfig({
     },
 
     footer: {
-      message: 'Part of TwentyOne.Life. Support: github.com/TwentyOneLife. BitcoinB2B: bc1ql66ssq24t7w4jl8updfrs820efnujp0m5jjuqk (send from a Bitcoin Blake2b wallet). Nostr/Lightning: TwentyOneLife@primal.net',
+      message: 'Part of TwentyOne.Life. Support: github.com/TwentyOneLife. BitcoinB2B: bc1ql66ssq24t7w4jl8updfrs820efnujp0m5jjuqk (send from a Bitcoin Blake2b wallet). Bitcoin (SHA-256): bc1qzz077zqg9e0ymy7euhrmfyfmsfuqggtlr7v9mf. Nostr/Lightning: TwentyOneLife@primal.net',
       copyright: 'MIT. TwentyOne.Life'
     }
   }
