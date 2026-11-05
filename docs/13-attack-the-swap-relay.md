@@ -48,12 +48,51 @@ bash connection-flood.sh 10.13.37.61 7777 2000   # then check a normal client st
 
 | Attack | MODE=open | MODE=hardened |
 |---|---|---|
-| event flood | almost all accepted | most `rate-limited` after the per-minute allowance |
-| oversized / malformed | may bloat memory | frame refused, connection stays up, REQ still answered |
-| wrong kind | stored and served | `OK ... false ... kind not allowed` |
-| connection flood | slots fill, host strains | past the cap, new connections dropped; a normal client still answered |
+| event flood | none `rate-limited` | most `rate-limited` after the per-minute allowance |
+| oversized / malformed | relay survives, answers REQ | relay survives, answers REQ |
+| wrong kind | `OK ... false ... kind not allowed` | `OK ... false ... kind not allowed` |
+| connection flood | all accepted (cap ~ host sockets) | accepted plateaus at the connection cap |
 
 Record the difference. That difference is the control doing its job.
+
+Two of these do **not** vary with `MODE`, by design, and that is the finding to record:
+
+- **The kind allowlist is unconditional.** `MODE=open` relaxes only the numeric limits (event bytes,
+  connections, events/min, store cap); it does not relax the allowlist, which is not operator
+  config. A wrong kind is blocked in both modes, which is the stronger property: it is not a knob an
+  operator can turn off.
+- **Oversized/malformed is rejected at parse in both modes.** The frame-size cap (set at the
+  WebSocket layer) and parse rejection both fire regardless of `MODE`; the malformed event here (no
+  pubkey) never reaches the store. This proves robustness, not a size-cap delta. To show the size
+  cap itself you would send a *valid, large* event.
+
+> **One trap the first run exposed.** The relay validates event *structure* at parse, before the
+> rate-limit and kind checks, and the one field it checks is the `pubkey` (it must be a real
+> secp256k1 point). An attack that sends a bogus pubkey is rejected as `unparseable` and never
+> reaches the control it means to test, so it would look identical in both modes. The scripts here
+> use secp256k1's generator x-coordinate (a valid x-only key) with a bogus id and signature: enough
+> to pass parse and exercise the limiter / allowlist, which is what we are measuring.
+
+## Carry a real swap over the relay (and under attack)
+
+Taking the relay down is one axis; the other is proving it **carries a real swap**. `72-swap-e2e.sh`
+runs sovereign-swap's `lab_e2e` integration test: two engines discover each other and complete a full
+BTC/xBTC atomic swap over `ws://$SWAP_RELAY_IP:7777`, settling on two regtest nodes (Bitcoin Core +
+Knots BLAKE2b) spawned as localhost children inside the runner container, so no node port is exposed
+and isolation holds.
+
+```sh
+MODE=hardened bash builder/70-swap-relay.sh    # relay up, shipped controls on
+bash builder/72-swap-e2e.sh                    # expect: LAB_E2E_OK: swap settled ...
+
+# the payoff - a real swap while the relay is flooded:
+#   on Kali, loop flood-events.py against the relay, then:
+bash builder/72-swap-e2e.sh                    # still settles; the flood is rate-limited, the swap is not
+```
+
+A legitimate swap uses its own low-rate connections, so the per-connection rate limit throttles the
+attacker without touching it. That is design 0007 made visible: abuse is expensive and ineffective,
+the swap completes, and no coin is ever at risk.
 
 ## Defend (and why you cannot "freeze" an attacker)
 
@@ -73,3 +112,26 @@ The sovereign way to punish abuse is to make it **expensive and ineffective**, n
 
 A denial-of-service attacker can cost the network a little time. They can never cost a trader a coin,
 and they can never be punished by taking one.
+
+## Measured results (2026-11-05, lab)
+
+Run against the relay at `ws://10.13.37.61:7777` from Kali (`10.13.37.10`), relay built from
+`sovereign-swap` `main`. Both node binaries verified (hash + GPG) by `fetch-nodes.sh`: Bitcoin Core
+v31.1.0, Bitcoin Knots v29.4.3.knots20260508.
+
+| Attack | MODE=open | MODE=hardened |
+|---|---|---|
+| `flood-events.py 1000` | `accepted=0 rate_limited=0 other_rejected=1000` | `accepted=0 rate_limited=760 other_rejected=240` |
+| `oversized-and-malformed.py` | survived, answered REQ | survived, answered REQ |
+| `wrong-kind.py` | `blocked: kind not allowed` | `blocked: kind not allowed` |
+| connection cap (600 concurrent ws) | `accepted_concurrent=600` | `accepted_concurrent=512` |
+
+- **Rate limit:** hardened throttles 760 of 1000 (the 240 "other" passed the per-minute allowance and
+  then failed signature verification, as expected for the bogus-sig flood); open throttles none.
+- **Connection cap:** hardened plateaus at 512 (the shipped cap); open accepts all 600.
+- **Allowlist / oversized:** unconditional, identical in both modes (see the notes above).
+
+Real swap over the relay (`72-swap-e2e.sh`, hardened): `LAB_E2E_OK: swap settled ... in 8 rounds`.
+Repeated with a sustained `flood-events.py 2000` loop running on Kali (attacker saw
+`rate_limited=1760` per round): the swap still settled in 8 rounds. The flood is throttled; the swap
+is not.
