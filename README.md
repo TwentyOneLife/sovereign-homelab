@@ -45,6 +45,7 @@ Default usernames and passwords ship in [`lab.conf`](lab.conf). Because the lab 
 
 - [`builder/`](builder/) - scripts that build the whole lab on your host (network, images, VMs, config).
 - [`docs/`](docs/) - the course modules; also the VitePress source (`docs/.vitepress/`) for the published site.
+- [`attacks/`](attacks/) - attack scripts for specific targets (e.g. the sovereign-swap relay, module 13).
 - [`lab.conf`](lab.conf) - your lab's names, IPs and credentials in one place.
 
 ## Built with, and for, TwentyOne.Life
