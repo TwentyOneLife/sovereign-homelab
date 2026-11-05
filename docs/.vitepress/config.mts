@@ -50,7 +50,8 @@ export default defineConfig({
           { text: '09. The Loot (Exfil)', link: '/09-loot-exfil' },
           { text: '10. Wi-Fi (WPA, Simulated)', link: '/10-wifi-wpa' },
           { text: '11. Blue-Team Capstone', link: '/11-blue-capstone' },
-          { text: '12. Secure Your Sovereign Node', link: '/12-secure-your-node' }
+          { text: '12. Secure Your Sovereign Node', link: '/12-secure-your-node' },
+          { text: '13. Attack the Swap Relay', link: '/13-attack-the-swap-relay' }
         ]
       }
     ],
