@@ -98,6 +98,13 @@ for name, body in bad_types.items():
     code, _ = call("POST", "/offers", TOKEN, body)
     check(f"offer: {name} -> 400", code == 400, f"got {code}")
 
+# --- engine-backed routes: refused cleanly (bad input, or no engine configured in this run) ---
+HEX16 = "00112233445566778899aabbccddeeff"  # a well-formed 16-byte id
+check("take bad offer id -> 400", call("POST", "/offers/zz/take", TOKEN, '{"amount_sat":1}')[0] == 400)
+check("take bad body -> 400", call("POST", f"/offers/{HEX16}/take", TOKEN, "nope")[0] == 400)
+check("take, no engine -> 503", call("POST", f"/offers/{HEX16}/take", TOKEN, '{"amount_sat":500000}')[0] == 503)
+check("swaps/{id}, no engine -> 404", call("GET", f"/swaps/{HEX16}", TOKEN)[0] == 404)
+
 # --- path / method abuse ---
 check("path traversal id -> 404", call("GET", "/swaps/..%2f..%2f..%2fetc%2fpasswd", TOKEN)[0] == 404)
 check("unknown method -> 404", call("TRACE", "/status", TOKEN)[0] == 404)
